@@ -1610,7 +1610,9 @@ angular.module('cv').run([ '$timeout', '$log', 'cvOptions', 'cubesService', 'cub
 	cubesCacheService.initialize();
 
 	// Initialize Cubes service
-	cubesService.connect();
+	if (cvOptions.connectOnInit !== false) {
+		cubesService.connect();
+	}
 
 }]);
 
