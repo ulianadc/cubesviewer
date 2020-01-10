@@ -61,7 +61,7 @@ angular.module('cv.cubes').service("cubesCacheService", ['$rootScope', '$log', '
 			}
 
 			jqxhr = $.Deferred();
-			jqxhr.error = function() { };
+			jqxhr.fail = function() { };
 
 			setTimeout(function() {
 				// TODO: What is the correct ordering of success/complete callbacks?
@@ -123,4 +123,3 @@ angular.module('cv.cubes').service("cubesCacheService", ['$rootScope', '$log', '
 	};
 
 }]);
-

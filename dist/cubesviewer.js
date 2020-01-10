@@ -240,7 +240,7 @@ angular.module('bootstrapSubmenu', []).directive("submenu", ['$timeout', functio
         // Return the cube if already loaded
         if((name in this._cubes) && callback){
         	var jqxhr = $.Deferred();
-        	jqxhr.error = function() { };
+        	jqxhr.fail = function() { };
         	setTimeout(function() {
         		// TODO: What is the correct ordering of success/complete callbacks?
         		callback(self._cubes[name]);
@@ -1430,7 +1430,7 @@ angular.module('cv.cubes').service("cubesCacheService", ['$rootScope', '$log', '
 			}
 
 			jqxhr = $.Deferred();
-			jqxhr.error = function() { };
+			jqxhr.fail = function() { };
 
 			setTimeout(function() {
 				// TODO: What is the correct ordering of success/complete callbacks?
@@ -2630,7 +2630,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeExploreControlle
 			$scope.view.pendingRequests--;
 			$rootScope.$apply();
 		});
-		jqxhr.error($scope.requestErrorHandler);
+		jqxhr.fail($scope.requestErrorHandler);
 
 	};
 
@@ -3315,7 +3315,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFactsController"
 			$scope.view.pendingRequests--;
 			$rootScope.$apply();
 		});
-		jqxhr.error($scope.requestErrorHandler);
+		jqxhr.fail($scope.requestErrorHandler);
 
 	};
 
@@ -3626,7 +3626,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeSeriesController
 			$scope.view.pendingRequests--;
 			$rootScope.$apply();
 		});
-		jqxhr.error($scope.requestErrorHandler);
+		jqxhr.fail($scope.requestErrorHandler);
 
 	};
 
@@ -4031,7 +4031,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartController"
 			$scope.view.pendingRequests--;
 			$rootScope.$apply();
 		});
-		jqxhr.error($scope.requestErrorHandler);
+		jqxhr.fail($scope.requestErrorHandler);
 
 	};
 

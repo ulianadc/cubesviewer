@@ -71,7 +71,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeSeriesController
 			$scope.view.pendingRequests--;
 			$rootScope.$apply();
 		});
-		jqxhr.error($scope.requestErrorHandler);
+		jqxhr.fail($scope.requestErrorHandler);
 
 	};
 

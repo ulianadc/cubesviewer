@@ -202,7 +202,7 @@
         // Return the cube if already loaded
         if((name in this._cubes) && callback){
         	var jqxhr = $.Deferred();
-        	jqxhr.error = function() { };
+        	jqxhr.fail = function() { };
         	setTimeout(function() {
         		// TODO: What is the correct ordering of success/complete callbacks?
         		callback(self._cubes[name]);
