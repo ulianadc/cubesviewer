@@ -2105,14 +2105,14 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$
         $scope.reststoreService = $injector.get('reststoreService');
     }
 
-
-    $scope.refreshView = function() {
-    	if ($scope.view && $scope.view.cube) {
-			//$scope.view.grid.data = [];
-			//$scope.view.grid.columnDefs = [];
-			$scope.$broadcast("ViewRefresh", $scope.view);
+		function refreshView() {
+			if ($scope.view && $scope.view.cube) {
+				//$scope.view.grid.data = [];
+				//$scope.view.grid.columnDefs = [];
+				$scope.$broadcast("ViewRefresh", $scope.view);
+			}
 		}
-	};
+		$scope.refreshView = _.debounce(refreshView, 300);
 
 	$scope.setViewMode = function(mode) {
 		// TODO: Remove setViewMode call on the controller
@@ -2609,7 +2609,6 @@ Math.formatnumber = function(value, decimalPlaces, decimalSeparator, thousandsSe
 
 	return result;
 };
-
 ;/*
  * CubesViewer
  * Copyright (c) 2012-2016 Jose Juan Montes, see AUTHORS for more details
