@@ -871,6 +871,8 @@ angular.module('bootstrapSubmenu', []).directive("submenu", ['$timeout', functio
 "use strict";
 
 /* Extensions to cubesviewer client lib */
+
+
 cubes.Dimension.prototype.hierarchies_count = function()  {
 
 	var count = 0;
@@ -886,17 +888,17 @@ cubes.Dimension.prototype.default_hierarchy = function()  {
 	return this.hierarchies[this.default_hierarchy_name];
 };
 
-/*
+/**
  * Extend model prototype to support datefilter dimensions.
+ * Inform if a dimension is a date dimension and can be used as a date
+ * filter (i.e. with date selection tool).
+ * @returns Whether the dimension is a date dimension.
  */
 cubes.Dimension.prototype.isDateDimension = function()  {
-
-	// Inform if a dimension is a date dimension and can be used as a date
-	// filter (i.e. with date selection tool).
 	return ((this.role == "time") &&
 			((! ("cv-datefilter" in this.info)) || (this.info["cv-datefilter"] == true)) );
-
 };
+
 
 /**
  * List date dimensions.
@@ -908,6 +910,33 @@ cubes.Cube.prototype.dateDimensions = function() {
 	for (var index in this.dimensions) {
 		var dimension = this.dimensions[index];
 		if (dimension.isDateDimension()) result.push(dimension);
+	}
+	return result;
+};
+
+
+/**
+ * Extend model prototype to support geographic dimensions.
+ * @returns Whether the dimension level is a geographic dimension.
+ */
+cubes.Level.prototype.isGeoLevel = function() {
+	return ((this.role == "geo") || ("cv-geo-source" in this.info));
+};
+
+
+/**
+ * List date dimensions.
+ *
+ * @returns An array with the dimensions that are date dimensions (role: time).
+ */
+cubes.Cube.prototype.geoLevels = function() {
+	var result = [];
+	for (var index in this.dimensions) {
+		var dimension = this.dimensions[index];
+		for (var indexL in dimension.levels) {
+			var level = dimension.levels[indexL];
+			if (level.isGeoLevel()) result.push(level);
+		}
 	}
 	return result;
 };
@@ -1492,7 +1521,6 @@ angular.module('cv.cubes').service("cubesCacheService", ['$rootScope', '$log', '
 	};
 
 }]);
-
 ;/*
  * CubesViewer
  * Copyright (c) 2012-2016 Jose Juan Montes, see AUTHORS for more details
@@ -1572,6 +1600,13 @@ angular.module('cv').config([ '$logProvider', 'cvOptions', /* 'editableOptions',
         	hideControls: false,
 
             gaTrackEvents: false,
+
+            geoMapLayers: {
+            	"world-osm": { label: "OpenStreetMap", source: "xyz", opacity: 1.0, attribution: "&copy; OpenStreetMap contributors", params: { url: 'http://tile.openstreetmap.org/{z}/{x}/{y}.png' } },
+            	"world-continents": { label: "World Continents", source: "geojson", opacity: 0.7, attribution: "&copy; Resolve attribution", params: { url: 'maps/world-continents.geo.json' } },
+            	"world-countries": { label: "World Countries", source: "geojson", opacity: 0.7, attribution: "&copy; Resolve attribution", params: { url: 'maps/world-palestine.geo.json' } },
+            	"spain-ign-ortho": { label: "Spain IGN Orthophotos", source: "wmts", opacity: 1.0, attribution: "IGN Spain", params: { url: 'http://www.ign.es/wmts/pnoa-ma?service=WMTS', layer: 'OI.OrthoimageCoverage' } }
+            },
 
             debug: false
     };
@@ -2051,8 +2086,8 @@ angular.module('cv.views.cube', []);
  *
  * FIXME: Some of this code shall be on a parent generic "view" directive.
  */
-angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$rootScope', '$log', '$window','$injector', '$scope', '$timeout', 'cvOptions', 'cubesService', 'viewsService', 'exportService', 'rowSorter', 'dialogService',
-                                                                               function ($rootScope, $log, $window, $injector, $scope, $timeout, cvOptions, cubesService, viewsService, exportService, rowSorter, dialogService) {
+angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$rootScope', '$log', '$window','$injector', '$scope', '$timeout', 'cvOptions', 'cubesService', 'viewsService', 'exportService', 'rowSorter', 'dialogService', 'seriesOperationsService',
+                                                                               function ($rootScope, $log, $window, $injector, $scope, $timeout, cvOptions, cubesService, viewsService, exportService, rowSorter, dialogService, seriesOperationsService) {
 
 	// TODO: Functions shall be here?
 	$scope.viewController = {};
@@ -2062,6 +2097,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$
 	$scope.cvOptions = cvOptions;
 	$scope.cubesService = cubesService;
 	$scope.exportService = exportService;
+	$scope.seriesOperationsService = seriesOperationsService;
 
 	$scope.reststoreService = null;
 
@@ -2079,7 +2115,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$
 	};
 
 	$scope.setViewMode = function(mode) {
-		console.debug("Remove setViewMode call on the controller?")
+		// TODO: Remove setViewMode call on the controller
 		$scope.view.setViewMode(mode);
 	};
 
@@ -2135,7 +2171,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$
 	};
 
 
-	$scope.resetGrid = function() {
+	$scope.workaroundSortCacheBug = function() {
 		rowSorter.colSortFnCache = {};
 		//$scope.view.grid.api.core.notifyDataChange(uiGridConstants.dataChange.ALL);
 	};
@@ -2162,6 +2198,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$
         });
         gridApi.core.on.sortChanged($scope, function(grid, sortColumns){
             // do something
+        	$scope.workaroundSortCacheBug();
         	$scope.view.params.columnSort[$scope.view.params.mode] = {};
         	$(sortColumns).each(function (idx, col) {
         		$scope.view.params.columnSort[$scope.view.params.mode][col.field] = { direction: col.sort.direction, priority: col.sort.priority };
@@ -2229,7 +2266,6 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$
 
 		$scope.refreshView();
 	};
-
 
 	/**
 	 * Accepts an aggregation or a measure and returns the formatter function.
@@ -2662,7 +2698,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeExploreControlle
 
 		var view = $scope.view;
 
-		$scope.resetGrid();
+		$scope.workaroundSortCacheBug();
 		$scope.view.grid.data = [];
 		$scope.view.grid.columnDefs = [];
 		$rootScope.$apply();
@@ -2961,7 +2997,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDimensionC
 	$scope.searchString = "";
 	$scope.selectedValues = null;
 	$scope.filterInverted = null;
-	$scope.filterShowAll = false;
+	$scope.filterShowAll = true;
 
 	$scope.currentDataId = null;
 
@@ -3103,18 +3139,32 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDimensionC
 			// Values and Labels
 			var drilldownLevelValues = [];
 			var drilldownLevelLabels = [];
+			var drilldownLevelOrderValues = [];
 
 			$(infos).each(function(idx, info) {
 				drilldownLevelValues.push(info.key);
 				drilldownLevelLabels.push(info.label);
+				drilldownLevelOrderValues.push(info.orderValue);
 			});
 
 			dimensionValues.push({
 				'label': drilldownLevelLabels.join(' / '),
 				'value': drilldownLevelValues.join (','),
-				'selected': filterValues.indexOf(drilldownLevelValues.join (',')) >= 0
+				'selected': filterValues.indexOf(drilldownLevelValues.join (',')) >= 0,
+				'orderValue': drilldownLevelOrderValues,
 			});
 
+		});
+
+		// Sort columns according to their dimension order
+		dimensionValues = dimensionValues.sort(function(a, b) {
+			for (var i = 0; i < a.orderValue.length; i++) {
+				var va = a.orderValue[i];
+				var vb = b.orderValue[i];
+				var res = $scope.sortValues(va, vb);
+				if (res != 0) return res;
+			}
+			return 0;
 		});
 
 		$scope.dimensionValues = dimensionValues;
@@ -3334,7 +3384,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFactsController"
 
 		var view = $scope.view;
 
-		$scope.resetGrid();
+		$scope.workaroundSortCacheBug();
 		$scope.view.grid.data = [];
 		$scope.view.grid.columnDefs = [];
 		$rootScope.$apply();
@@ -3368,7 +3418,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFactsController"
 	    });
 
 		view.grid.columnDefs.push({
-			name: "id",
+			name: "Id",
 			field: "id",
 			index: "id",
 			enableHiding: false,
@@ -3382,9 +3432,9 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFactsController"
 			for (var i = 0; i < dimension.levels.length; i++) {
 				var level = dimension.levels[i];
 				var col = {
-					name: level.label,
+					name: dimension.label + "/" + level.label, // level.label, //
 					field: level.key().ref,
-					index : level.key().ref,
+					index : dimension.ref + "_" + level.key().ref,
 					headerCellClass: "cv-grid-header-dimension",
 					//cellClass : "text-right",
 					//sorttype : "number",
@@ -3407,7 +3457,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFactsController"
 						var col = {
 							name: e.name,
 							field: e.ref,
-							index : e.ref,
+							index : dimension.ref + "_" + level.key().ref + "_" + e.ref,
 							headerCellClass: "cv-grid-header-dimensionattribute",
 							//cellClass : "text-right",
 							//sorttype : "number",
@@ -3532,7 +3582,9 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFactsController"
 
 			// Set key
             row["id"] = counter++;
+
 			if ("id" in e) row["id"] = e["id"];
+			if ("__fact_key__" in e) row["id"] = e["__fact_key__"];
 			row["key"] = row["id"];
 
 			row["_cell"] = e;
@@ -3647,7 +3699,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeSeriesController
 
 		//$scope.rawData = data;
 
-		$scope.resetGrid();
+		$scope.workaroundSortCacheBug();
 		$scope.view.grid.data = [];
 		$scope.view.grid.columnDefs = [];
 		$rootScope.$apply();
@@ -3734,6 +3786,7 @@ cubesviewer._seriesAddRows = function($scope, data) {
 
 	// Copy drilldown as we'll modify it
 	var drilldown = view.params.drilldown.slice(0);
+	var ag = $.grep(view.cube.aggregates, function(ag) { return ag.ref == view.params.yaxis; })[0];
 
 	// Include X Axis if necessary
 	if (view.params.xaxis != null) {
@@ -3744,8 +3797,10 @@ cubesviewer._seriesAddRows = function($scope, data) {
 	var addedCols = [];
 	$(data.cells).each(function (idx, e) {
 
-		var row = [];
 		var key = [];
+		var nid = [];
+		var label = [];
+		var order = [];
 
 		// For the drilldown level, if present
 		for (var i = 0; i < drilldown.length; i++) {
@@ -3755,22 +3810,30 @@ cubesviewer._seriesAddRows = function($scope, data) {
 			var infos = parts.hierarchy.readCell(e, parts.level);
 
 			// Values and Labels
-			var drilldownLevelValues = [];
+			var drilldownLevelKeys = [];
 			var drilldownLevelLabels = [];
+			var drilldownLevelOrderValues = [];
 
 			$(infos).each(function(idx, info) {
-				drilldownLevelValues.push(info.key);
+				drilldownLevelKeys.push(info.key);
 				drilldownLevelLabels.push(info.label);
+				drilldownLevelOrderValues.push(info.orderValue);
 			});
 
-			key.push (drilldownLevelLabels.join(" / "));
-
+			nid.push(drilldownLevelKeys.join('-'));
+			label.push(drilldownLevelLabels.join(" / "));
+			//key.push (drilldownLevelLabels.join(" / "));
+			key.push(drilldownLevelKeys.join("_"));
+			order.push(drilldownLevelOrderValues);
 		}
 
 		// Set key
-		var colKey = (view.params.xaxis == null) ? view.params.yaxis : key[0];
+		var colKey = (view.params.xaxis == null) ? view.params.yaxis : key[0];  // key[0] because that's the horizontal dimension key
+		var colLabel = (view.params.xaxis == null) ? ag.label : label[0];
+		var colOrderValue = order[0];
 		var value = (e[view.params.yaxis]);
-		var rowKey = (view.params.xaxis == null) ? key.join (' / ') : key.slice(1).join (' / ');
+		//var rowKey = (view.params.xaxis == null) ? key.join (' / ') : key.slice(1).join(' / ');
+		var rowKey = (view.params.xaxis == null) ? nid.join ('-') : nid.slice(1).join ('-');
 
 		// Search or introduce
 		var row = $.grep(rows, function(ed) { return ed["key"] == rowKey; });
@@ -3784,23 +3847,22 @@ cubesviewer._seriesAddRows = function($scope, data) {
 
 			for (var i = baseidx ; i < key.length; i++) {
 				newrow["key" + (i - baseidx)] = key[i];
+				newrow["label" + (i - baseidx)] = label[i];
 			}
 
 			newrow["_cell"] = e;
 			rows.push ( newrow );
 		}
 
-
 		// Add column definition if the column hasn't been added yet
 		if (addedCols.indexOf(colKey) < 0) {
 			addedCols.push(colKey);
 
-			var ag = $.grep(view.cube.aggregates, function(ag) { return ag.ref == view.params.yaxis })[0];
-
 			var col = {
-				name: colKey,
+				name: colLabel,
 				field: colKey,
-				index : colKey,
+				index: colKey,
+				colOrderValue: colOrderValue,
 				cellClass : "text-right",
 				//sorttype : "number",
 				cellTemplate: '<div class="ui-grid-cell-contents" title="TOOLTIP">{{ col.colDef.formatter(COL_FIELD, row, col) }}</div>',
@@ -3817,11 +3879,22 @@ cubesviewer._seriesAddRows = function($scope, data) {
 		}
 	});
 
+	// Sort columns according to their dimension order
+	view.grid.columnDefs = view.grid.columnDefs.sort(function(a, b) {
+		for (var i = 0; i < a.colOrderValue.length; i++) {
+			var va = a.colOrderValue[i];
+			var vb = b.colOrderValue[i];
+			var res = $scope.sortValues(va, vb);
+			if (res != 0) return res;
+		}
+		return 0;
+	});
+
 	//var label = [];
-	$(view.params.drilldown).each (function (idx, e) {
+	$(view.params.drilldown).each(function (idx, e) {
 		var col = {
 			name: view.cube.cvdim_dim(e).label,
-			field: "key" + idx,
+			field: "label" + idx,
 			index : "key" + idx,
 			headerCellClass: "cv-grid-header-dimension",
 			enableHiding: false,
@@ -3841,7 +3914,8 @@ cubesviewer._seriesAddRows = function($scope, data) {
 	});
 
 	if (view.params.drilldown.length == 0 && rows.length > 0) {
-		rows[0]["key0"] = view.cube.aggregateFromName(view.params.yaxis).label;
+		rows[0]["key0"] = view.cube.aggregateFromName(view.params.yaxis).name;
+		rows[0]["label0"] = view.cube.aggregateFromName(view.params.yaxis).label;
 
 		var col = {
 			name: "Measure",
@@ -3945,6 +4019,17 @@ angular.module('cv.views').service("seriesOperationsService", ['$rootScope', 'cv
 
 	this.calculateAccum = function(view, rows, columnDefs) {
 
+		$(rows).each(function(idx, e) {
+			var accum = 0.0;
+			for (var i = view.params.drilldown.length; i < columnDefs.length; i++) {
+	    		var value = e[columnDefs[i].field];
+	    		if (value != null && !isNaN(value)) {
+	    			accum = accum + value;
+	    		}
+	    		e[columnDefs[i].field] = accum;
+	    	}
+		});
+
 	};
 
 	this.applyCalculations = function(view, rows, columnDefs) {
@@ -3954,7 +4039,17 @@ angular.module('cv.views').service("seriesOperationsService", ['$rootScope', 'cv
 		if (view.params.calculation == "percentage") {
 			this.calculateDifferentialsPercent(view, rows, columnDefs);
 		}
+		if (view.params.calculation == "accum") {
+			this.calculateAccum(view, rows, columnDefs);
+		}
 	};
+
+	this.selectOperation = function(view, calculation) {
+		// TODO: Move to cube controller, which has access to the view?
+		console.warn("View needs manual refresh (note the series calculations feature is still experimental).")
+		view.params.calculation = calculation;
+		//view.refreshView();
+	}
 
 
 }]);
@@ -4055,7 +4150,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartController"
 
 		$scope.rawData = data;
 
-		$scope.resetGrid();
+		$scope.workaroundSortCacheBug();
 		$scope.view.grid.data = [];
 		$scope.view.grid.columnDefs = [];
 		$rootScope.$apply();
@@ -4077,8 +4172,14 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartController"
 
 			$(rows).each(function(idx, e) {
 				var jointkey = [];
+				var jointlabel = [];
 				for (var i = 0; i < view.params.drilldown.length; i++) jointkey.push(e["key" + i]);
-				e["key"] = jointkey.join(" / ");
+				for (var i = 0; i < view.params.drilldown.length; i++) jointlabel.push(e["label" + i]);
+				e["key"] = jointkey.join("_");
+				e["label"] = jointlabel.join(" / ");
+
+				// FIXME: Using label as key for charts, but we should properly use keys/labels for charts and column definitions in general
+				e["key"] = e["label"];
 			});
 		}
 
@@ -4095,6 +4196,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartController"
 
 		//$($element).find("svg").empty();
 		$($element).find("svg").parent().children().not("svg").remove();
+		$($element).find("svg").empty();
 
 		if (chartCtrl.chart) {
 			$("#" + chartCtrl.chart.tooltip.id()).remove(); // div.nvtooltip
@@ -4188,17 +4290,12 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartController"
 		  $(img).remove();
 		  $(canvas).remove();
 
-		  // this is now the base64 encoded version of our PNG! you could optionally
-		  // redirect the user to download the PNG by sending them to the url with
-		  // `window.location.href= canvasUrl`.
-		  /*
-		  var img2 = d3.select('body').append('img')
-		    .attr('width', svgSel.width())
-		    .attr('height', svgSel.height())
-		    .node();
-		   */
-		  //img2.src = canvasUrl;
-		  exportService.saveAs(canvasUrl, $scope.view.cube.name + "-" + $scope.view.params.charttype + ".png");
+		  // As per issue #93 and https://stackoverflow.com/questions/17332071/trying-to-save-canvas-png-data-url-to-disk-with-html5-filesystem-but-when-i-ret
+		  var data = atob( canvasUrl.substring( "data:image/png;base64,".length ) ), asArray = new Uint8Array(data.length);
+		  for( var i = 0, len = data.length; i < len; ++i ) {asArray[i] = data.charCodeAt(i);}
+		  var blob = new Blob( [ asArray.buffer ], {type: "image/png"} );
+
+		  exportService.saveAs(blob, "image/png", $scope.view.cube.name + "-" + $scope.view.params.charttype + ".png");
 		}
 		// start loading the image.
 		img.src = url;
@@ -4271,7 +4368,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartBarsVertica
 		var columnDefs = view.grid.columnDefs;
 
 		var container = $($element).find("svg").get(0);
-		var xAxisLabel = ( (view.params.xaxis != null) ? view.cube.dimensionParts(view.params.xaxis).label : "None")
+		var xAxisLabel = ( (view.params.xaxis != null) ? view.cube.dimensionParts(view.params.xaxis).label : "");
 
 	    var d = [];
 
@@ -4280,7 +4377,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartBarsVertica
 	    $(dataRows).each(function(idx, e) {
 	    	var serie = [];
 	    	for (var i = 1; i < columnDefs.length; i++) {
-	    		var value = e[columnDefs[i].name];
+	    		var value = e[columnDefs[i].field];
 	    		serie.push( { "x": columnDefs[i].name, "y":  (value != undefined) ? value : 0 } );
 	    	}
 	    	var series = { "values": serie, "key": e["key"] != "" ? e["key"] : view.params.yaxis };
@@ -4421,7 +4518,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartBarsHorizon
 		var columnDefs = view.grid.columnDefs;
 
 		var container = $($element).find("svg").get(0);
-		var xAxisLabel = ( (view.params.xaxis != null) ? view.cube.dimensionParts(view.params.xaxis).label : "None")
+		var xAxisLabel = ( (view.params.xaxis != null) ? view.cube.dimensionParts(view.params.xaxis).label : "");
 
 	    var d = [];
 
@@ -4430,7 +4527,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartBarsHorizon
 	    $(dataRows).each(function(idx, e) {
 	    	var serie = [];
 	    	for (var i = 1; i < columnDefs.length; i++) {
-	    		var value = e[columnDefs[i].name];
+	    		var value = e[columnDefs[i].field];
 
 	    		// If second serie is reversed
 	    		if (dataRows.length == 2 && serieCount == 1 && view.params.chartoptions.mirrorSerie2) value = (value != undefined) ? -value : 0;
@@ -4591,7 +4688,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartLinesContro
 
 		var container = $($element).find("svg").get(0);
 
-		var xAxisLabel = ( (view.params.xaxis != null) ? view.cube.dimensionParts(view.params.xaxis).label : "None")
+		var xAxisLabel = ( (view.params.xaxis != null) ? view.cube.dimensionParts(view.params.xaxis).label : "");
 
 
 	    // TODO: Check there's only one value column
@@ -4729,7 +4826,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartLinesContro
 	this.drawChartLinesCumulative = function (view, colNames, dataRows, dataTotals) {
 
 		var container = $('#seriesChart-' + view.id).find("svg").get(0);
-		var xAxisLabel = ( (view.params.xaxis != null) ? view.cube.getDimensionParts(view.params.xaxis).label : "None")
+		var xAxisLabel = ( (view.params.xaxis != null) ? view.cube.getDimensionParts(view.params.xaxis).label : "");
 
 	    var d = [];
 
@@ -4864,7 +4961,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartPieControll
 	    	var value = e[columnDefs[1].field];
     		if ((value != undefined) && (value > 0)) {
 
-    	    	var series = { "y": value, "key": e["key"] != "" ? e["key"] : columnDefs[0].name };
+    	    	var series = { "y": value, "key": e["key"] != "" ? e["key"] : columnDefs[0].field };
     	    	if (view.params["chart-disabledseries"]) {
     	    		if (view.params["chart-disabledseries"]["key"] == (view.params.drilldown.join(","))) {
     	    			series.disabled = !! view.params["chart-disabledseries"]["disabled"][series.key];
@@ -5156,6 +5253,8 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartSunburstCon
 	 * Prepares drilldowndata
 	 */
 	$scope.prepareDrilldownTree = function (data) {
+
+		// FIXME: This representation is using cells directly, instead of data from series.
 
 		var view = $scope.view;
 
@@ -5557,6 +5656,342 @@ function cubesviewerViewCubeDynamicChart() {
  * SOFTWARE.
  */
 
+'use strict';
+
+/**
+ *
+    "cv-geo-feature-layer": "world-countries",
+    "cv-geo-feature-attribute": "geo_code",
+    "cv-geo-feature-mode": "cloropleth"
+ *
+ */
+angular.module('cv.views.cube').controller("CubesViewerViewsCubeChartMapController", ['$rootScope', '$scope', '$element', '$timeout', '$log','cvOptions', 'cubesService', 'viewsService',
+                                                     function ($rootScope, $scope, $element, $timeout, $log, cvOptions, cubesService, viewsService) {
+
+	$scope.map = null;
+
+
+	$scope.initialize = function() {
+		// Add chart view parameters to view definition
+	};
+
+	$scope.$on('gridDataUpdated', function() {
+		$timeout(function() {
+			$scope.drawChartMap();
+		}, 0);
+	});
+
+	/**
+	 * Draws a vertical bars chart.
+	 */
+	$scope.drawChartMap = function () {
+
+		var view = $scope.view;
+		var dataRows = $scope.view.grid.data;
+		var columnDefs = view.grid.columnDefs;
+
+		var container = $($element).find(".cv-map-container").get(0);
+		$(container).empty();
+
+		var xAxisLabel = ( (view.params.xaxis != null) ? view.cube.dimensionParts(view.params.xaxis).label : "None");
+
+
+		// Select column
+		var geoLevels = [];
+		$(view.params.drilldown).each(function(idx, e) {
+			var dimParts = view.cube.dimensionParts(e);
+			if (dimParts.level.isGeoLevel()) geoLevels.push(dimParts.level);
+		});
+
+		// Get geo info from model
+		$scope.geoLevel = null;
+		if (geoLevels.length > 0) {
+			$scope.geoLevel = geoLevels[0];
+		} else {
+			return;
+		}
+
+		console.debug($scope.geoLevel);
+
+		var projectionId = $scope.geoLevel.info['cv-geo-crs'] ? $scope.geoLevel.info['cv-geo-crs'] : 'EPSG:3857';
+		$scope.mapProjection = ol.proj.get(projectionId);
+
+		// Create layers
+		var mapLayers = $scope.geoLevel.info['cv-geo-map-layers'];
+		$scope.mapLayers = $scope.createLayers(mapLayers);
+
+	    $scope.map = new ol.Map({
+	    	layers: $scope.mapLayers['_order'],
+	        target: container,
+	        view: new ol.View({
+	        	center: [876970.8463461736, 5859807.853963373],
+	        	projection: ol.proj.get('EPSG:3857'),
+	        	zoom: 6
+	        })
+	    });
+
+	    // Feature layer
+	    var layerFeatureId = $scope.geoLevel.info['cv-geo-ref-layer'];
+	    $scope.layerFeature = $scope.mapLayers[layerFeatureId];
+
+	    //$scope.layerFeature.getSource().setState("undefined");
+	    var listenerKey = $scope.layerFeature.getSource().on('change', function(e) {
+	    	console.debug($scope.layerFeature.getSource().getState());
+			if ($scope.layerFeature.getSource().getState() == 'ready') {
+				ol.Observable.unByKey(listenerKey);
+				$scope.layerFeature.getSource().unByKey(listenerKey); //if you don't use the current master branch of ol3
+				$scope.drawData();
+			}
+    	});
+
+	    // Geo ref attributes
+	    var refAttributes = $.grep($scope.geoLevel.attributes, function(e) {
+	    	return e.name == $scope.geoLevel.info['cv-geo-ref-model-attribute'];
+	    });
+	    if (refAttributes.length != 1) {
+	    	console.error("Could not find attribute with name '" + $scope.geoLevel.info['cv-geo-ref-model-attribute'] + "' to use as geographic reference key (cv-geo-ref-model-attribute).");
+	    	return;
+	    }
+	    $scope.refModelAttribute = refAttributes[0].ref;
+	    $scope.refLayerAttribute = $scope.geoLevel.info['cv-geo-ref-feature-attribute'];
+
+	    //$timeout($scope.drawData, 2000);
+
+	};
+
+	$scope.drawData = function() {
+
+		var view = $scope.view;
+		var dataRows = $scope.view.grid.data;
+		var columnDefs = view.grid.columnDefs;
+
+	    // Collect values to calculate data range
+    	var allValues = [];
+	    $(dataRows).each(function(idx, e) {
+	    	for (var i = 1; i < columnDefs.length; i++) {
+	    		if (columnDefs[i].field in e) {
+	    			var value = e[columnDefs[i].field];
+	    			allValues.push(value);
+	    		}
+	    	}
+	    });
+
+	    var createTextStyle = function(feature, text) {
+	    	return new ol.style.Text({
+	    	    textAlign: 'center',
+	    	    textBaseline: 'middle',
+	    	    font: '10px Verdana',
+	    	    text: text, // getText(feature),
+	    	    fill: new ol.style.Fill({color: 'black'}),
+	    	    stroke: new ol.style.Stroke({color: 'white', width: 2.0})
+    	  	});
+    	};
+
+    	var ag = $.grep(view.cube.aggregates, function(ag) { return ag.ref == view.params.yaxis })[0];
+    	var colFormatter = $scope.columnFormatFunction(ag);
+
+    	var numRows = dataRows.length;
+    	var colorScale = d3.scale.linear().range(['white', 'red']);
+    	// Walk rows to define features
+	    $(dataRows).each(function(idx, e) {
+	    	for (var i = 1; i < columnDefs.length; i++) {
+	    		if (columnDefs[i].field in e) {
+
+	    			var value = e[columnDefs[i].field];
+	    			var valueFormatted = colFormatter(value);
+
+	    			var infos = $scope.geoLevel.readCell(e._cell);
+	    			var label = infos.label;
+
+	    			if (value !== undefined) {
+
+	    				var found = false;
+	    				$($scope.layerFeature.getSource().getFeatures()).each(function(idx, feature) {
+	    					if ((feature.getProperties()[$scope.refLayerAttribute] == e._cell[$scope.refModelAttribute])) {
+	    						found = true;
+	    						var color = colorScale(d3.scale.quantize().domain([d3.min(allValues), d3.max(allValues)]).range([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])(value));
+	    						feature.setStyle(
+	    							new ol.style.Style({
+	    								fill: new ol.style.Fill({color: color, opacity: 0.5}),
+	    								stroke: new ol.style.Stroke({color: "#3A9CCD", width: 1.0, opacity: 1.0} ),
+	    								text: createTextStyle(feature, label + "\n" + valueFormatted)
+	    								/* geometry: function(feature) {
+	    							        // Expecting a MultiPolygon here
+	    							        var interiorPoints = feature.getGeometry().getInteriorPoints();
+	    							        return interiorPoints.getPoint(0);
+	    							    }*/
+	    							})
+	    						);
+	    					}
+	    				});
+	    				if (!found) {
+	    					console.debug("Could not found referenced feature in map while drawing map data: " + $scope.refLayerAttribute + " = " + e._cell[$scope.refModelAttribute]);
+	    				}
+	    			}
+	    		}
+	    	}
+	    });
+	};
+
+	defineMapControllerLayerMethods($scope);
+	$scope.initialize();
+
+}]);
+
+
+;/*
+ * CubesViewer
+ * Copyright (c) 2012-2016 Jose Juan Montes, see AUTHORS for more details
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+"use strict";
+
+
+var defineMapControllerLayerMethods = function($scope) {
+
+	/**
+	 * Creates a Tile XYZ layer.
+	 * @param mapLayer
+	 * @returns The created layer.
+	 */
+	$scope.createLayerXYZ = function(mapLayer) {
+
+		var sourceParams = {};
+		angular.extend(sourceParams, mapLayer.params);
+		if (mapLayer.attribution) sourceParams['attributions'] = [ new ol.Attribution({ 'html': "" + mapLayer.attribution }) ];
+
+		var layer = new ol.layer.Tile({
+			source: new ol.source.XYZ(sourceParams),
+			opacity: mapLayer.opacity ? mapLayer.opacity : 1.0,
+	        visible: "visible" in mapLayer ? mapLayer.visible : true
+	    });
+
+		return layer;
+	};
+
+
+	/**
+	 * Creates a GeoJSON layer.
+	 * @returns The created layer.
+	 */
+	$scope.createLayerVector = function(mapLayer) {
+
+		var sourceParams = { };
+		angular.extend(sourceParams, mapLayer.params);
+
+		if (mapLayer.attribution) sourceParams['attributions'] = [ new ol.Attribution({ 'html': "" + mapLayer.attribution }) ];
+		if (sourceParams['format'] == "geojson") sourceParams['format'] = new ol.format.GeoJSON();
+		if (sourceParams['format'] == "kml") sourceParams['format'] = new ol.format.KML();
+
+		/*
+		var style = function(feature, resolution) {
+        	var fontSize = 1.5 - 0.5 * feature.get("scalerank") / 10;
+        	return [ new ol.style.Style({
+        		text: new ol.style.Text({
+                    text: resolution < 3600 || (resolution < 14400 && feature.get("scalerank") < 4) ? feature.get("name") : "",
+                    font: 'bold ' + (fontSize * 10) + 'px Calibri,sans-serif',
+                    fill: new ol.style.Fill({color: "#ffffff"}),
+                    stroke: new ol.style.Stroke({color: "#000000", width: 3}),
+                })
+    		}) ]
+        };
+		*/
+
+		// Populated places GeoJSON
+		var layer = new ol.layer.Vector({
+	        title: mapLayer.label,
+	        source: new ol.source.Vector(sourceParams),
+	        visible: "visible" in mapLayer ? mapLayer.visible : true
+
+	        // TODO: Layer styles shall be optional and chosen from several possibilities (if applied)
+	        //style: style
+	    });
+
+		return layer;
+	};
+
+
+	/**
+	 * Creates various types of map layers based on settings.
+	 * @returns A hash of OpenLayers map layers, along with an '_order' key with an ordered array.
+	 */
+	$scope.createLayers = function(mapLayers) {
+
+		var layers = {};
+		layers['_order'] = [];
+		angular.forEach(mapLayers, function(mapLayer) {
+
+			var layer = null;
+
+			if (mapLayer.params.url && (mapLayer.params.url.search('{}') >= 0)) {
+				mapLayer.params.url = mapLayer.params.url.replace('{}', $location.host());
+			}
+
+			if (mapLayer.type == 'wmts') {
+				layer = $scope.createLayerWMTS(mapLayer);
+			} else if (mapLayer.type == 'xyz') {
+				layer = $scope.createLayerXYZ(mapLayer);
+			} else if (mapLayer.type == 'vector') {
+				layer = $scope.createLayerVector(mapLayer);
+			} else {
+				console.error('Wrong map settings. Could not create map layer of source type: ' + mapLayer.type);
+				return;
+			}
+
+			layers[mapLayer.name] = layer;
+			layers['_order'].push(layer);
+
+		});
+
+		return layers;
+	};
+
+};
+
+
+
+
+;/*
+ * CubesViewer
+ * Copyright (c) 2012-2016 Jose Juan Montes, see AUTHORS for more details
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 /*
  * This addon adds export to CSV capability to CubesViewer cube view.
  * It offers an "export facts" menu option for all cube view modes,
@@ -5667,6 +6102,7 @@ angular.module('cv.views.cube').service("exportService", ['$rootScope', '$timeou
 	/**
 	 * Grab page styles as a string to embed them into the SVG source
 	 * From: https://github.com/NYTimes/svg-crowbar/blob/gh-pages/svg-crowbar.js
+	 * @returns A list of CSS styles applied to the document.
 	 */
 	this.getDocumentStyles = function() {
 
@@ -7119,7 +7555,40 @@ angular.module('cv.cubes').service("gaService", ['$rootScope', '$http', '$cookie
     "        </div>\n" +
     "    </div>\n" +
     "\n" +
+    "    <div ng-if=\"view.params.charttype == 'map'\">\n" +
+    "        <h3><i class=\"fa fa-fw fa-globe\"></i> Map chart\n" +
+    "            <i ng-show=\"view.pendingRequests > 0\" class=\"fa fa-circle-o-notch fa-spin fa-fw margin-bottom text-info pull-right\"></i>\n" +
+    "        </h3>\n" +
+    "        <div ng-if=\"view.pendingRequests > 0\" class=\"loadingbar-content\">\n" +
+    "            <span class=\"loadingbar-expand\"></span>\n" +
+    "        </div>\n" +
+    "        <div ng-controller=\"CubesViewerViewsCubeChartMapController\">\n" +
+    "            <div ng-include=\"'views/cube/chart/map/chart-map.html'\"></div>\n" +
+    "        </div>\n" +
+    "    </div>\n" +
+    "\n" +
     "</div>\n"
+  );
+
+
+  $templateCache.put('views/cube/chart/map/chart-map.html',
+    "<div ng-show=\"view.grid.data.length > 0\">\n" +
+    "    <div>\n" +
+    "        <div class=\"cv-chart-container\">\n" +
+    "            <div class=\"cv-map-container\" style=\"height: 400px;\" ></div>\n" +
+    "        </div>\n" +
+    "        <div ng-hide=\"view.getControlsHidden()\" style=\"font-size: 8px; float: right;\">\n" +
+    "            <a href=\"\" class=\"cv-chart-height\" ng-click=\"resizeChart(400);\">Small</a>\n" +
+    "            <a href=\"\" class=\"cv-chart-height\" ng-click=\"resizeChart(550);\">Medium</a>\n" +
+    "            <a href=\"\" class=\"cv-chart-height\" ng-click=\"resizeChart(700);\">Tall</a>\n" +
+    "        </div>\n" +
+    "    </div>\n" +
+    "</div>\n" +
+    "\n" +
+    "<div ng-if=\"gridOptions.data.length == 0\" class=\"alert alert-info\" style=\"margin-bottom: 0px;\">\n" +
+    "    Cannot present chart: <b>no rows returned</b> by the current filtering, horizontal dimension, and drilldown combination.\n" +
+    "</div>\n" +
+    "\n"
   );
 
 
@@ -7302,11 +7771,8 @@ angular.module('cv.cubes').service("gaService", ['$rootScope', '$http', '$cookie
     "          <li ng-click=\"selectChartType('sunburst')\"><a href=\"\"><i class=\"fa fa-fw fa-sun-o\"></i> Sunburst</a></li>\n" +
     "          -->\n" +
     "\n" +
-    "          <!--\n" +
     "          <div class=\"divider\"></div>\n" +
-    "\n" +
-    "          <li><a href=\"\"><i class=\"fa fa-fw fa-globe\"></i> Map</a></li>\n" +
-    "           -->\n" +
+    "          <li ng-click=\"selectChartType('map')\"><a href=\"\"><i class=\"fa fa-fw fa-globe\"></i> Map</a></li>\n" +
     "\n" +
     "        </ul>\n" +
     "    </li>\n" +
@@ -7404,15 +7870,15 @@ angular.module('cv.cubes').service("gaService", ['$rootScope', '$http', '$cookie
     "    <li ng-show=\"cvOptions.seriesOperationsEnabled && (view.params.mode == 'series' || view.params.mode == 'chart')\" class=\"dropdown-submenu\">\n" +
     "        <a tabindex=\"0\" ><i class=\"fa fa-fw fa-calculator\"></i> Series operations</a>\n" +
     "        <ul class=\"dropdown-menu\">\n" +
-    "          <li ng-click=\"selectOperation('difference')\"><a href=\"\"><i class=\"fa fa-fw fa-line-chart\"></i> Difference</a></li>\n" +
-    "          <li ng-click=\"selectOperation('percentage')\"><a href=\"\"><i class=\"fa fa-fw fa-percent\"></i> Change rate</a></li>\n" +
+    "          <li ng-click=\"seriesOperationsService.selectOperation(view, 'difference')\"><a href=\"\"><i class=\"fa fa-fw fa-line-chart\"></i> Difference</a></li>\n" +
+    "          <li ng-click=\"seriesOperationsService.selectOperation(view, 'percentage')\"><a href=\"\"><i class=\"fa fa-fw fa-percent\"></i> Change rate</a></li>\n" +
+    "          <li ng-click=\"seriesOperationsService.selectOperation(view, 'accum')\"><a href=\"\"><i class=\"fa fa-fw\">&sum;</i> Accumulated</a></li>\n" +
     "          <!--\n" +
-    "          <li ng-click=\"selectOperation('accum')\"><a href=\"\"><i class=\"fa fa-fw\">&sum;</i> Accumulated</a></li>\n" +
     "          <div class=\"divider\"></div>\n" +
     "          <li ng-click=\"selectOperation('fill-zeros')\"><a href=\"\"><i class=\"fa fa-fw\">0</i> Replace blanks with zeroes</a></li>\n" +
     "           -->\n" +
     "          <div class=\"divider\"></div>\n" +
-    "          <li ng-click=\"selectOperation(null)\"><a href=\"\"><i class=\"fa fa-fw fa-times\"></i> Clear operations</a></li>\n" +
+    "          <li ng-click=\"seriesOperationsService.selectOperation(view, null)\"><a href=\"\"><i class=\"fa fa-fw fa-times\"></i> Clear operations</a></li>\n" +
     "        </ul>\n" +
     "    </li>\n" +
     "\n" +
@@ -7708,7 +8174,7 @@ angular.module('cv.cubes').service("gaService", ['$rootScope', '$http', '$cookie
     "\n" +
     "              <div class=\"form-group has-feedback\" style=\"display: inline-block; margin-bottom: 0; vertical-align: middle; margin-bottom: 2px;\">\n" +
     "                <!-- <label for=\"search\">Search:</label>  -->\n" +
-    "                <input type=\"text\" class=\"form-control\" ng-model=\"searchString\" ng-model-options=\"{ debounce: 300 }\" placeholder=\"Search...\" style=\"width: 16em;\">\n" +
+    "                <input type=\"text\" class=\"form-control\" ng-model=\"searchString\" ng-model-options=\"{ debounce: 1000 }\" placeholder=\"Search...\" style=\"width: 16em;\">\n" +
     "                <i class=\"fa fa-fw fa-times-circle form-control-feedback\" ng-click=\"searchString = ''\" style=\"cursor: pointer; pointer-events: inherit;\"></i>\n" +
     "              </div>\n" +
     "\n" +
