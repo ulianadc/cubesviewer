@@ -252,10 +252,10 @@ angular.module('cv.cubes').service("cubesService", ['$rootScope', '$log', 'cvOpt
 
 		} else if (datefilter.mode == "custom") {
 			if ((datefilter.date_from != null) && (datefilter.date_from != "")) {
-				date_from = new Date(datefilter.date_from);
+				date_from = new Date(datefilter.date_from + ' 00:00:00');
 			}
 			if ((datefilter.date_to != null) && (datefilter.date_to != "")) {
-				date_to = new Date(datefilter.date_to);
+				date_to = new Date(datefilter.date_to + ' 00:00:00');
 			}
 		}
 
