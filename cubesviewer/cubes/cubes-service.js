@@ -223,33 +223,20 @@ angular.module('cv.cubes').service("cubesService", ['$rootScope', '$log', 'cvOpt
 		var date_from = null;
 		var date_to = null;
 
-		if (datefilter.mode.indexOf("auto-") == 0) {
-			if (datefilter.mode == "auto-last1m") {
-				date_from = new Date();
-				date_from.setMonth(date_from.getMonth() - 1);
-			} else if (datefilter.mode == "auto-last3m") {
-				date_from = new Date();
-				date_from.setMonth(date_from.getMonth() - 3);
-			} else if (datefilter.mode == "auto-last6m") {
-				date_from = new Date();
-				date_from.setMonth(date_from.getMonth() - 6);
-			} else if (datefilter.mode == "auto-last12m") {
-				date_from = new Date();
-				date_from.setMonth(date_from.getMonth() - 12);
-			} else if (datefilter.mode == "auto-last24m") {
-				date_from = new Date();
-				date_from.setMonth(date_from.getMonth() - 24);
-			} else if (datefilter.mode == "auto-january1st") {
-				date_from = new Date();
-				date_from.setMonth(0);
-				date_from.setDate(1);
-			} else if (datefilter.mode == "auto-yesterday") {
-				date_from = new Date();
-				date_from.setDate(date_from.getDate() - 1);
-				date_to = new Date();
-                date_to.setDate(date_from.getDate() - 1);
-			}
-
+		if (datefilter.mode == "auto-last1m") {
+			date_from = moment().subtract(1, 'months').startOf('month').toDate();
+			date_to = moment().subtract(1, 'months').endOf('month').toDate();
+		} else if (datefilter.mode == "auto-last3m") {
+			date_from = moment().subtract(3, 'months').startOf('month').toDate();
+			date_to = moment().subtract(1, 'months').endOf('month').toDate();
+		} else if (datefilter.mode == "auto-last6m") {
+			date_from = moment().subtract(6, 'months').startOf('month').toDate();
+			date_to = moment().subtract(1, 'months').endOf('month').toDate();
+		} else if (datefilter.mode == "auto-lastyr") {
+			date_from = moment().subtract(1, 'year').startOf('year').toDate();
+			date_to = moment().subtract(1, 'year').endOf('year').toDate();
+		} else if (datefilter.mode == "auto-ytd") {
+			date_from = moment().startOf('year').toDate();
 		} else if (datefilter.mode == "custom") {
 			if ((datefilter.date_from != null) && (datefilter.date_from != "")) {
 				date_from = new Date(datefilter.date_from + ' 00:00:00');
@@ -320,5 +307,3 @@ angular.module('cv.cubes').service("cubesService", ['$rootScope', '$log', 'cvOpt
 	this.initialize();
 
 }]);
-
-

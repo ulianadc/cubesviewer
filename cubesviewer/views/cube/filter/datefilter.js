@@ -36,19 +36,15 @@
 
 angular.module('cv.views.cube').filter("datefilterMode", ['$rootScope', 'cvOptions',
                                                           function ($rootScope, cvOptions) {
-	return function(val) {
-		var text = "None";
-		switch (val) {
-			case "custom": text = "Custom"; break;
-			case "auto-last1m": text = "Last month"; break;
-			case "auto-last3m": text = "Last 3 months"; break;
-			case "auto-last6m": text = "Last 6 months"; break;
-			case "auto-last12m": text = "Last year"; break;
-			case "auto-last24m": text = "Last 2 years"; break;
-			case "auto-january1st": text = "From January 1st"; break;
-			case "auto-yesterday": text = "Yesterday"; break;
-		}
-		return text;
+	return function (val) {
+    return {
+      "custom": "Custom",
+      "auto-last1m": "Last month",
+      "auto-last3m": "Last 3 months",
+      "auto-last6m": "Last 6 months",
+      "auto-lastyr": "Last Year",
+      "auto-ytd": "YTD",
+    }[val] || "None";
 	};
 }]);
 
@@ -58,6 +54,14 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDateContro
 		$scope.dateStart.value = $scope.datefilter.date_from ? new Date($scope.datefilter.date_from) : null;
 		$scope.dateEnd.value = $scope.datefilter.date_to ? new Date($scope.datefilter.date_to) : null;
 	};
+
+  $scope.autoModes = [
+    "auto-last1m",
+    "auto-last3m",
+    "auto-last6m",
+    "auto-lastyr",
+    "auto-ytd",
+  ];
 
 	$scope.dateStart = {
 		opened: false,
@@ -108,5 +112,3 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDateContro
 	$scope.initialize();
 
 }]);
-
-

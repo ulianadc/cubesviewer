@@ -1297,33 +1297,20 @@ angular.module('cv.cubes').service("cubesService", ['$rootScope', '$log', 'cvOpt
 		var date_from = null;
 		var date_to = null;
 
-		if (datefilter.mode.indexOf("auto-") == 0) {
-			if (datefilter.mode == "auto-last1m") {
-				date_from = new Date();
-				date_from.setMonth(date_from.getMonth() - 1);
-			} else if (datefilter.mode == "auto-last3m") {
-				date_from = new Date();
-				date_from.setMonth(date_from.getMonth() - 3);
-			} else if (datefilter.mode == "auto-last6m") {
-				date_from = new Date();
-				date_from.setMonth(date_from.getMonth() - 6);
-			} else if (datefilter.mode == "auto-last12m") {
-				date_from = new Date();
-				date_from.setMonth(date_from.getMonth() - 12);
-			} else if (datefilter.mode == "auto-last24m") {
-				date_from = new Date();
-				date_from.setMonth(date_from.getMonth() - 24);
-			} else if (datefilter.mode == "auto-january1st") {
-				date_from = new Date();
-				date_from.setMonth(0);
-				date_from.setDate(1);
-			} else if (datefilter.mode == "auto-yesterday") {
-				date_from = new Date();
-				date_from.setDate(date_from.getDate() - 1);
-				date_to = new Date();
-                date_to.setDate(date_from.getDate() - 1);
-			}
-
+		if (datefilter.mode == "auto-last1m") {
+			date_from = moment().subtract(1, 'months').startOf('month').toDate();
+			date_to = moment().subtract(1, 'months').endOf('month').toDate();
+		} else if (datefilter.mode == "auto-last3m") {
+			date_from = moment().subtract(3, 'months').startOf('month').toDate();
+			date_to = moment().subtract(1, 'months').endOf('month').toDate();
+		} else if (datefilter.mode == "auto-last6m") {
+			date_from = moment().subtract(6, 'months').startOf('month').toDate();
+			date_to = moment().subtract(1, 'months').endOf('month').toDate();
+		} else if (datefilter.mode == "auto-lastyr") {
+			date_from = moment().subtract(1, 'year').startOf('year').toDate();
+			date_to = moment().subtract(1, 'year').endOf('year').toDate();
+		} else if (datefilter.mode == "auto-ytd") {
+			date_from = moment().startOf('year').toDate();
 		} else if (datefilter.mode == "custom") {
 			if ((datefilter.date_from != null) && (datefilter.date_from != "")) {
 				date_from = new Date(datefilter.date_from + ' 00:00:00');
@@ -1394,8 +1381,6 @@ angular.module('cv.cubes').service("cubesService", ['$rootScope', '$log', 'cvOpt
 	this.initialize();
 
 }]);
-
-
 ;/*
  * CubesViewer
  * Copyright (c) 2012-2016 Jose Juan Montes, see AUTHORS for more details
@@ -3234,19 +3219,15 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDimensionC
 
 angular.module('cv.views.cube').filter("datefilterMode", ['$rootScope', 'cvOptions',
                                                           function ($rootScope, cvOptions) {
-	return function(val) {
-		var text = "None";
-		switch (val) {
-			case "custom": text = "Custom"; break;
-			case "auto-last1m": text = "Last month"; break;
-			case "auto-last3m": text = "Last 3 months"; break;
-			case "auto-last6m": text = "Last 6 months"; break;
-			case "auto-last12m": text = "Last year"; break;
-			case "auto-last24m": text = "Last 2 years"; break;
-			case "auto-january1st": text = "From January 1st"; break;
-			case "auto-yesterday": text = "Yesterday"; break;
-		}
-		return text;
+	return function (val) {
+    return {
+      "custom": "Custom",
+      "auto-last1m": "Last month",
+      "auto-last3m": "Last 3 months",
+      "auto-last6m": "Last 6 months",
+      "auto-lastyr": "Last Year",
+      "auto-ytd": "YTD",
+    }[val] || "None";
 	};
 }]);
 
@@ -3256,6 +3237,14 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDateContro
 		$scope.dateStart.value = $scope.datefilter.date_from ? new Date($scope.datefilter.date_from) : null;
 		$scope.dateEnd.value = $scope.datefilter.date_to ? new Date($scope.datefilter.date_to) : null;
 	};
+
+  $scope.autoModes = [
+    "auto-last1m",
+    "auto-last3m",
+    "auto-last6m",
+    "auto-lastyr",
+    "auto-ytd",
+  ];
 
 	$scope.dateStart = {
 		opened: false,
@@ -3306,8 +3295,6 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDateContro
 	$scope.initialize();
 
 }]);
-
-
 ;/*
  * CubesViewer
  * Copyright (c) 2012-2016 Jose Juan Montes, see AUTHORS for more details
@@ -8106,13 +8093,7 @@ angular.module('cv.cubes').service("gaService", ['$rootScope', '$http', '$cookie
     "                      <ul class=\"dropdown-menu cv-view-menu cv-view-menu-view\">\n" +
     "                        <li ng-click=\"setMode('custom')\"><a><i class=\"fa fa-fw\"></i> Custom</a></li>\n" +
     "                        <div class=\"divider\"></div>\n" +
-    "                        <li ng-click=\"setMode('auto-last1m')\"><a><i class=\"fa fa-fw\"></i> Last month</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-last3m')\"><a><i class=\"fa fa-fw\"></i> Last 3 months</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-last6m')\"><a><i class=\"fa fa-fw\"></i> Last 6 months</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-last12m')\"><a><i class=\"fa fa-fw\"></i> Last year</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-last24m')\"><a><i class=\"fa fa-fw\"></i> Last 2 years</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-january1st')\"><a><i class=\"fa fa-fw\"></i> From January 1st</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-yesterday')\"><a><i class=\"fa fa-fw\"></i> Yesterday</a></li>\n" +
+    "                        <li ng-repeat=\"mode in autoModes\" ng-click=\"setMode(mode)\"><a><i class=\"fa fa-fw\"></i> {{ mode | datefilterMode }}</a></li>\n" +
     "                      </ul>\n" +
     "                  </div>\n" +
     "                 </div>\n" +
@@ -8153,8 +8134,7 @@ angular.module('cv.cubes').service("gaService", ['$rootScope', '$http', '$cookie
     "\n" +
     "\n" +
     "    </div>\n" +
-    "</div>\n" +
-    "\n"
+    "</div>\n"
   );
 
 

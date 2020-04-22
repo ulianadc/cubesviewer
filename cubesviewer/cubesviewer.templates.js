@@ -1021,13 +1021,7 @@ angular.module('cv').run(['$templateCache', function($templateCache) {
     "                      <ul class=\"dropdown-menu cv-view-menu cv-view-menu-view\">\n" +
     "                        <li ng-click=\"setMode('custom')\"><a><i class=\"fa fa-fw\"></i> Custom</a></li>\n" +
     "                        <div class=\"divider\"></div>\n" +
-    "                        <li ng-click=\"setMode('auto-last1m')\"><a><i class=\"fa fa-fw\"></i> Last month</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-last3m')\"><a><i class=\"fa fa-fw\"></i> Last 3 months</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-last6m')\"><a><i class=\"fa fa-fw\"></i> Last 6 months</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-last12m')\"><a><i class=\"fa fa-fw\"></i> Last year</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-last24m')\"><a><i class=\"fa fa-fw\"></i> Last 2 years</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-january1st')\"><a><i class=\"fa fa-fw\"></i> From January 1st</a></li>\n" +
-    "                        <li ng-click=\"setMode('auto-yesterday')\"><a><i class=\"fa fa-fw\"></i> Yesterday</a></li>\n" +
+    "                        <li ng-repeat=\"mode in autoModes\" ng-click=\"setMode(mode)\"><a><i class=\"fa fa-fw\"></i> {{ mode | datefilterMode }}</a></li>\n" +
     "                      </ul>\n" +
     "                  </div>\n" +
     "                 </div>\n" +
@@ -1068,8 +1062,7 @@ angular.module('cv').run(['$templateCache', function($templateCache) {
     "\n" +
     "\n" +
     "    </div>\n" +
-    "</div>\n" +
-    "\n"
+    "</div>\n"
   );
 
 
