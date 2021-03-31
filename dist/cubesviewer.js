@@ -2346,7 +2346,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$
 		var filterValues = [];
 		var selectedRows = view.grid.api.selection.getSelectedRows();
 		$(selectedRows).each( function(idx, gd) {
-			filterValues.push(gd["key0"].cutValue);
+			filterValues.push(gd["key0"].cutValue.replace(";", "\\;"));
 		});
 
 		var invert = false;
@@ -3109,7 +3109,10 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDimensionC
 		for (var i = 0; i < view.params.cuts.length ; i++) {
 			if (view.params.cuts[i].dimension == view.cube.dimensionParts($scope.view.dimensionFilter).cutDimension) {
 				$scope.filterInverted = view.params.cuts[i].invert;
-				filterValues = view.params.cuts[i].value.split(";");
+				filterValues = view.params.cuts[i].value.split(/(?<!\\);/);
+				for (var j = 0; j < filterValues.length; j++) {
+					filterValues[j] = filterValues[j].replace("\\;", ";");
+				}
 				break;
 			}
 		}
@@ -3164,7 +3167,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDimensionC
 
 		var filterValues = [];
 		$($scope.dimensionValues).each(function(idx, val) {
-			if (val.selected) filterValues.push(val.value);
+			if (val.selected) filterValues.push(val.value.replace(";", "\\;"));
 		});
 
 		// If all values are selected, the filter is empty and therefore removed by selectCut
@@ -3180,7 +3183,6 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDimensionC
 	$scope.initialize();
 
 }]);
-
 ;/*
  * CubesViewer
  * Copyright (c) 2012-2016 Jose Juan Montes, see AUTHORS for more details

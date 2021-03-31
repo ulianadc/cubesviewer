@@ -358,7 +358,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$
 		var filterValues = [];
 		var selectedRows = view.grid.api.selection.getSelectedRows();
 		$(selectedRows).each( function(idx, gd) {
-			filterValues.push(gd["key0"].cutValue);
+			filterValues.push(gd["key0"].cutValue.replace(";", "\\;"));
 		});
 
 		var invert = false;
