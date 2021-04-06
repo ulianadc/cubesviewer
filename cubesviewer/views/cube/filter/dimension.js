@@ -166,9 +166,9 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDimensionC
 		for (var i = 0; i < view.params.cuts.length ; i++) {
 			if (view.params.cuts[i].dimension == view.cube.dimensionParts($scope.view.dimensionFilter).cutDimension) {
 				$scope.filterInverted = view.params.cuts[i].invert;
-				filterValues = view.params.cuts[i].value.split(/(?<!\\);/);
+				filterValues = view.params.cuts[i].value.replace("\\;", "%%%").split(";");
 				for (var j = 0; j < filterValues.length; j++) {
-					filterValues[j] = filterValues[j].replace("\\;", ";");
+					filterValues[j] = filterValues[j].replace("%%%", ";");
 				}
 				break;
 			}
