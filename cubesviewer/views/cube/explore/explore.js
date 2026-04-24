@@ -230,7 +230,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeExploreControlle
 				nid.push(drilldownLevelValues.join("-"));
 
 				var cutDimension = parts.dimension.name + ( parts.hierarchy.name != "default" ? "@" + parts.hierarchy.name : "" );
-				key.push({ cutValue: drilldownLevelValues.join(","), title: drilldownLevelLabels.join(" / ") });
+				key.push({ cutValue: cubes.string_from_path(drilldownLevelValues), title: drilldownLevelLabels.join(" / ") });
 			}
 
 			// Set key

@@ -1265,7 +1265,7 @@ angular.module('cv.cubes').service("cubesService", ['$rootScope', '$log', 'cvOpt
 			var dimParts = view.cube.dimensionParts(e.dimension);
 			var cutDim = dimParts.dimension.name + ( dimParts.hierarchy.name != "default" ? "@" + dimParts.hierarchy.name : "" );
 
-			cuts.push(invert + cutDim + ":" + e.value.replace("-", "\\-"));
+			cuts.push(invert + cutDim + ":" + e.value);
 		});
 
 		// Date filters
@@ -2346,7 +2346,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeController", ['$
 		var filterValues = [];
 		var selectedRows = view.grid.api.selection.getSelectedRows();
 		$(selectedRows).each( function(idx, gd) {
-			filterValues.push(gd["key0"].cutValue.replace(";", "\\;"));
+			filterValues.push(gd["key0"].cutValue);
 		});
 
 		var invert = false;
@@ -2826,7 +2826,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeExploreControlle
 				nid.push(drilldownLevelValues.join("-"));
 
 				var cutDimension = parts.dimension.name + ( parts.hierarchy.name != "default" ? "@" + parts.hierarchy.name : "" );
-				key.push({ cutValue: drilldownLevelValues.join(","), title: drilldownLevelLabels.join(" / ") });
+				key.push({ cutValue: cubes.string_from_path(drilldownLevelValues), title: drilldownLevelLabels.join(" / ") });
 			}
 
 			// Set key
@@ -3109,10 +3109,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDimensionC
 		for (var i = 0; i < view.params.cuts.length ; i++) {
 			if (view.params.cuts[i].dimension == view.cube.dimensionParts($scope.view.dimensionFilter).cutDimension) {
 				$scope.filterInverted = view.params.cuts[i].invert;
-				filterValues = view.params.cuts[i].value.replace("\\;", "%%%").split(";");
-				for (var j = 0; j < filterValues.length; j++) {
-					filterValues[j] = filterValues[j].replace("%%%", ";");
-				}
+				filterValues = cubes._split_with_negative_lookbehind(view.params.cuts[i].value, cubes.SET_CUT_SEPARATOR, '\\');
 				break;
 			}
 		}
@@ -3134,10 +3131,11 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDimensionC
 				drilldownLevelOrderValues.push(info.orderValue);
 			});
 
+			var escapedValue = cubes.string_from_path(drilldownLevelValues);
 			dimensionValues.push({
 				'label': drilldownLevelLabels.join(' / '),
-				'value': drilldownLevelValues.join (','),
-				'selected': filterValues.indexOf(drilldownLevelValues.join (',')) >= 0,
+				'value': escapedValue,
+				'selected': filterValues.indexOf(escapedValue) >= 0,
 				'orderValue': drilldownLevelOrderValues,
 			});
 
@@ -3167,7 +3165,7 @@ angular.module('cv.views.cube').controller("CubesViewerViewsCubeFilterDimensionC
 
 		var filterValues = [];
 		$($scope.dimensionValues).each(function(idx, val) {
-			if (val.selected) filterValues.push(val.value.replace(";", "\\;"));
+			if (val.selected) filterValues.push(val.value);
 		});
 
 		// If all values are selected, the filter is empty and therefore removed by selectCut
